@@ -62,8 +62,8 @@
   .legend b { color: #eee; display: block; margin-bottom: 4px; font-size: 0.74rem; }
   .legend-item { display: flex; align-items: center; gap: 6px; }
   .legend-icon { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; flex-shrink: 0; }
-  /* Eliminate sub-pixel gaps between map tiles */
-  .leaflet-tile { border-right: 1px solid transparent; border-bottom: 1px solid transparent; }
+  /* Match container background to tile color so sub-pixel gaps are invisible */
+  .leaflet-container { background: #1a1a2e; }
   .li-tlac   { background: #e74c3c; }
   .li-tarry  { background: #e67e22; }
   .li-aas    { background: #3498db; }
