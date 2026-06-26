@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APA! Adopter & Foster Heat Maps (2022–2026)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #1a1a2e; color: #eee; }
+  header {
+    padding: 16px 24px 12px;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+  }
+  header h1 { font-size: 1.25rem; font-weight: 600; color: #e0e0e0; }
+  header p { font-size: 0.78rem; color: #aaa; margin-top: 3px; }
+  .maps-wrapper {
+    display: flex;
+    height: calc(100vh - 72px);
+  }
+  .map-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid #0f3460;
+  }
+  .map-panel:last-child { border-right: none; }
+  .map-title {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot-adopter { background: #ff6b35; }
+  .dot-foster  { background: #4ecdc4; }
+  .map-count { font-size: 0.72rem; font-weight: 400; color: #888; margin-left: auto; }
+  .map { flex: 1; }
+  .legend {
+    position: absolute;
+    bottom: 28px;
+    right: 10px;
+    z-index: 1000;
+    background: rgba(22,33,62,0.92);
+    border: 1px solid #0f3460;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.72rem;
+    line-height: 1.8;
+    color: #ccc;
+  }
+  .legend b { color: #eee; display: block; margin-bottom: 4px; font-size: 0.74rem; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-icon { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; flex-shrink: 0; }
+  .li-tlac   { background: #e74c3c; }
+  .li-tarry  { background: #e67e22; }
+  .li-aas    { background: #3498db; }
+  .li-ahs    { background: #9b59b6; }
+</style>
+</head>
+<body>
+<header>
+  <h1>APA! Community Heat Maps &mdash; June 2022 to June 2026</h1>
+  <p>Adopter and foster home locations by ZIP code &middot; Shelter markers show APA! TLAC, APA! Tarrytown, Austin Animal Services, and Austin Humane Society</p>
+</header>
+
+<div class="maps-wrapper">
+  <div class="map-panel">
+    <div class="map-title">
+      <span class="dot dot-adopter"></span> Adopter Locations
+      <span class="map-count">~26,000 adoptions &middot; 103 ZIP codes</span>
+    </div>
+    <div id="map-adopter" class="map"></div>
+  </div>
+  <div class="map-panel">
+    <div class="map-title">
+      <span class="dot dot-foster"></span> Foster Locations
+      <span class="map-count">~14,000 foster events &middot; 103 ZIP codes</span>
+    </div>
+    <div id="map-foster" class="map"></div>
+  </div>
+</div>
+
+<script>
+const SHELTER_LOCATIONS = [
+  { name: "APA! Town Lake Animal Center (TLAC)", lat: 30.2649, lng: -97.7590, cls: "li-tlac",  color: "#e74c3c" },
+  { name: "APA! Tarrytown",                       lat: 30.2956, lng: -97.7588, cls: "li-tarry", color: "#e67e22" },
+  { name: "Austin Animal Services",               lat: 30.2501, lng: -97.6871, cls: "li-aas",   color: "#3498db" },
+  { name: "Austin Humane Society",                lat: 30.3675, lng: -97.7138, cls: "li-ahs",   color: "#9b59b6" },
+];
+
+// [lat, lng, intensity]
+const ADOPTER_POINTS = [[30.2063,-97.7956,1268],[30.2428,-97.7658,1223],[30.2896,-97.7396,1218],[30.1743,-97.8225,1011],[30.4421,-97.6299,912],[30.2315,-97.7223,899],[30.4036,-97.7526,733],[30.2166,-97.8508,716],[30.5052,-97.8203,665],[30.1876,-97.7472,621],[30.3764,-97.7078,601],[30.5835,-97.8575,555],[30.2638,-97.7166,529],[30.3085,-97.6849,522],[30.3093,-97.7242,509],[30.4521,-97.7688,494],[30.3471,-97.7609,471],[29.9966,-97.8335,462],[30.3437,-97.7316,457],[30.0918,-97.8534,450],[29.8754,-97.9404,439],[30.2971,-97.8181,419],[30.3649,-97.6827,410],[30.5145,-97.668,399],[30.4254,-97.7195,393],[30.2907,-97.7648,390],[30.506,-97.7472,382],[30.5145,-97.668,375],[30.249,-97.8414,373],[30.1204,-97.7433,371],[30.4417,-97.6811,337],[30.5083,-97.6789,322],[30.4224,-97.7967,314],[30.3388,-97.5323,310],[30.3316,-97.7004,302],[30.3423,-97.6673,300],[30.2107,-97.9427,292],[30.2713,-97.7426,289],[30.5257,-97.5672,278],[30.3705,-97.9427,276],[30.3337,-97.9824,267],[30.172,-97.8784,264],[30.43,-97.8326,257],[30.2268,-98.1029,243],[30.296,-97.6396,242],[30.633,-97.6707,215],[30.3223,-97.739,208],[30.6411,-97.7511,205],[30.2893,-97.715,191],[30.2721,-97.6868,184],[30.2444,-97.916,181],[30.3752,-97.9007,173],[30.3231,-97.3737,144],[30.1745,-97.6134,136],[30.3607,-97.8241,131],[30.663,-97.9316,111],[30.3314,-97.8666,109],[30.449,-97.9669,105],[30.1388,-97.2921,103],[30.3899,-98.0539,92],[30.1238,-97.8393,90],[30.2562,-97.6243,86],[30.7177,-97.7543,77],[30.0265,-98.1123,68],[30.8119,-97.5942,67],[29.7229,-98.0742,66],[35.4011,-80.8695,61],[30.0966,-97.4976,55],[30.1072,-98.0327,52],[30.5708,-97.4094,50],[31.0376,-97.6809,45],[31.071,-97.3898,44],[31.0065,-97.841,40],[29.8868,-97.6769,38],[30.5784,-98.2751,37],[31.2029,-97.9301,32],[35.4733,-80.8726,30],[29.9528,-97.581,27],[29.8953,-97.8144,26],[31.0723,-97.472,25],[30.7411,-98.0529,22],[31.0286,-97.6115,21],[31.1349,-97.7756,21],[30.0178,-97.1494,20],[30.7766,-98.2642,20],[29.7565,-98.1983,17],[30.6045,-96.3123,17],[29.9112,-98.2374,16],[31.5171,-97.1198,15],[30.1858,-97.1198,15],[29.5613,-97.9628,14],[29.4599,-98.7479,13],[31.1172,-97.6651,13],[31.1164,-97.7278,12],[30.9494,-97.533,12],[31.0895,-97.3343,12],[31.0917,-97.3648,12],[30.5443,-98.3739,11],[30.1802,-97.6667,10],[29.579,-98.2778,10],[30.8076,-97.7812,10],[29.5189,-98.6006,10],[30.2817,-98.8799,10]];
+
+const FOSTER_POINTS = [[30.2896,-97.7396,829],[30.2428,-97.7658,662],[30.2063,-97.7956,513],[30.2315,-97.7223,389],[30.1743,-97.8225,352],[30.4036,-97.7526,299],[30.2638,-97.7166,294],[30.2166,-97.8508,269],[30.4421,-97.6299,265],[30.3764,-97.7078,255],[30.3093,-97.7242,246],[30.3085,-97.6849,242],[30.2907,-97.7648,240],[30.1876,-97.7472,232],[30.2971,-97.8181,208],[30.3437,-97.7316,206],[30.5052,-97.8203,205],[30.2713,-97.7426,191],[30.4254,-97.7195,182],[30.3471,-97.7609,180],[30.249,-97.8414,157],[30.3649,-97.6827,156],[30.4521,-97.7688,146],[30.5835,-97.8575,143],[30.506,-97.7472,137],[30.3316,-97.7004,128],[29.9966,-97.8335,117],[30.3423,-97.6673,112],[30.4224,-97.7967,112],[30.1204,-97.7433,111],[30.5145,-97.668,111],[30.0918,-97.8534,104],[30.5145,-97.668,103],[30.172,-97.8784,103],[29.8754,-97.9404,101],[30.5083,-97.6789,101],[30.3705,-97.9427,101],[30.2893,-97.715,99],[30.3388,-97.5323,97],[30.4417,-97.6811,90],[30.2107,-97.9427,89],[30.3337,-97.9824,88],[30.2721,-97.6868,86],[30.296,-97.6396,84],[30.3223,-97.739,84],[30.43,-97.8326,70],[30.2444,-97.916,66],[30.6411,-97.7511,60],[30.5257,-97.5672,56],[30.3752,-97.9007,55],[30.633,-97.6707,50],[30.2268,-98.1029,48],[30.3314,-97.8666,46],[30.3607,-97.8241,45],[30.2562,-97.6243,38],[30.1745,-97.6134,36],[30.3231,-97.3737,34],[30.1238,-97.8393,33],[30.449,-97.9669,28],[30.1388,-97.2921,24],[30.3899,-98.0539,24],[35.4011,-80.8695,18],[30.1072,-98.0327,17],[29.7229,-98.0742,15],[30.8119,-97.5942,15],[30.663,-97.9316,15],[30.0966,-97.4976,14],[30.0265,-98.1123,13],[30.7177,-97.7543,12],[30.5708,-97.4094,10],[29.9528,-97.581,10],[30.5784,-98.2751,8],[31.0065,-97.841,7],[29.8868,-97.6769,7],[31.2029,-97.9301,6],[30.0178,-97.1494,6],[30.1802,-97.6667,5],[29.8953,-97.8144,5],[31.0376,-97.6809,5],[30.5443,-98.3739,5],[30.2948,-98.3691,4],[30.1858,-97.1198,4],[29.4321,-97.5531,4],[31.0286,-97.6115,4],[29.6826,-97.6499,4],[35.3183,-80.7476,4],[29.9112,-98.2374,4],[29.579,-98.2778,3],[35.4733,-80.8726,3],[32.0295,-102.0915,3],[30.7766,-98.2642,3],[31.071,-97.3898,3],[35.4141,-80.6162,3],[29.4599,-98.7479,3],[31.1349,-97.7756,3],[30.1777,-96.9332,3],[31.1172,-97.6651,3],[35.4858,-80.794,3],[29.5613,-97.9628,3],[29.5189,-98.6006,3],[30.6662,-98.4475,3],[30.8076,-97.7812,3],[29.8394,-97.8508,3]];
+
+function buildMap(containerId, points, gradient, maxVal) {
+  const map = L.map(containerId, {
+    center: [30.32, -97.77],
+    zoom: 10,
+    zoomControl: true,
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(map);
+
+  L.heatLayer(points, {
+    radius: 28,
+    blur: 22,
+    maxZoom: 13,
+    max: maxVal,
+    gradient: gradient,
+  }).addTo(map);
+
+  // Shelter markers
+  SHELTER_LOCATIONS.forEach(s => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="
+        width:14px; height:14px; border-radius:50%;
+        background:${s.color}; border:2px solid #fff;
+        box-shadow: 0 0 6px rgba(0,0,0,0.8);
+      "></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    });
+    L.marker([s.lat, s.lng], { icon })
+      .bindTooltip(s.name, { permanent: false, direction: 'top', offset: [0, -8] })
+      .addTo(map);
+  });
+
+  return map;
+}
+
+const adopterMax = Math.max(...ADOPTER_POINTS.map(p => p[2]));
+const fosterMax  = Math.max(...FOSTER_POINTS.map(p => p[2]));
+
+buildMap('map-adopter', ADOPTER_POINTS, {
+  0.0: '#1a0533',
+  0.3: '#6b2fa0',
+  0.5: '#e05a00',
+  0.7: '#ff9900',
+  1.0: '#fff700',
+}, adopterMax);
+
+buildMap('map-foster', FOSTER_POINTS, {
+  0.0: '#001a1a',
+  0.3: '#006060',
+  0.5: '#00b4b4',
+  0.7: '#4ecdc4',
+  1.0: '#b2ffe6',
+}, fosterMax);
+
+// Shared legend — appended to body, positioned over right map
+const legend = document.createElement('div');
+legend.className = 'legend';
+legend.innerHTML = `
+  <b>Shelter Locations</b>
+  ${SHELTER_LOCATIONS.map(s => `
+    <div class="legend-item">
+      <div class="legend-icon ${s.cls}" style="background:${s.color}"></div>
+      <span>${s.name}</span>
+    </div>`).join('')}
+`;
+document.body.appendChild(legend);
+</script>
+</body>
+</html>
