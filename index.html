@@ -122,10 +122,10 @@ function buildMap(containerId, points, gradient, maxVal) {
   }).addTo(map);
 
   L.heatLayer(points, {
-    radius: 45,
-    blur: 30,
+    radius: 22,
+    blur: 16,
     maxZoom: 13,
-    minOpacity: 0.35,
+    minOpacity: 0.5,
     max: maxVal,
     gradient: gradient,
   }).addTo(map);
@@ -150,25 +150,20 @@ function buildMap(containerId, points, gradient, maxVal) {
   return map;
 }
 
-// Cap max well below the actual peak so mid-density ZIPs render bright at metro zoom
-const adopterMax = 200;
-const fosterMax  = 150;
+// Filter to Texas-area only (excludes NC and other out-of-state outliers)
+const txOnly = pts => pts.filter(p => p[0] < 34);
 
-buildMap('map-adopter', ADOPTER_POINTS, {
-  0.0: '#1a0533',
-  0.3: '#6b2fa0',
-  0.5: '#e05a00',
-  0.7: '#ff9900',
-  1.0: '#fff700',
-}, adopterMax);
+const SHARED_GRADIENT = {
+  0.0: '#0d0221',
+  0.25: '#6b00a8',
+  0.5: '#d62020',
+  0.75: '#ff8c00',
+  1.0: '#ffee00',
+};
+const SHARED_MAX = 300;
 
-buildMap('map-foster', FOSTER_POINTS, {
-  0.0: '#001a1a',
-  0.3: '#006060',
-  0.5: '#00b4b4',
-  0.7: '#4ecdc4',
-  1.0: '#b2ffe6',
-}, fosterMax);
+buildMap('map-adopter', txOnly(ADOPTER_POINTS), SHARED_GRADIENT, SHARED_MAX);
+buildMap('map-foster',  txOnly(FOSTER_POINTS),  SHARED_GRADIENT, SHARED_MAX);
 
 // Shared legend — appended to body, positioned over right map
 const legend = document.createElement('div');
